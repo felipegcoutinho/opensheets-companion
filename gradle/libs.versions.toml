@@ -18,6 +18,7 @@ coroutines = "1.9.0"
 ksp = "2.1.0-1.0.29"
 mlkitBarcodeScanning = "17.3.0"
 cameraX = "1.4.1"
+accompanist = "0.34.0"
 
 [libraries]
 # Core Android
@@ -75,6 +76,9 @@ camera-core = { group = "androidx.camera", name = "camera-core", version.ref = "
 camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "cameraX" }
 camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "cameraX" }
 camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "cameraX" }
+
+# Accompanist
+accompanist-drawablepainter = { group = "com.google.accompanist", name = "accompanist-drawablepainter", version.ref = "accompanist" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

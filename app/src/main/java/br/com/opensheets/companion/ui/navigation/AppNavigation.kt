@@ -44,9 +44,6 @@ fun AppNavigation() {
 
         composable(Screen.Home.route) {
             HomeScreen(
-                onNavigateToHistory = {
-                    navController.navigate(Screen.History.route)
-                },
                 onNavigateToSettings = {
                     navController.navigate(Screen.Settings.route)
                 }

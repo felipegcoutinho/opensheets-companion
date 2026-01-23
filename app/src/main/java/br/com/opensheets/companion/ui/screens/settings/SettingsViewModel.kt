@@ -3,7 +3,9 @@ package br.com.opensheets.companion.ui.screens.settings
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
+import android.graphics.drawable.Drawable
 import android.provider.Settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -14,16 +16,24 @@ import br.com.opensheets.companion.service.CaptureNotificationListenerService
 import br.com.opensheets.companion.util.SecureStorage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 data class MonitoredAppUi(
     val packageName: String,
     val displayName: String,
     val isEnabled: Boolean
+)
+
+data class InstalledAppUi(
+    val packageName: String,
+    val displayName: String,
+    val icon: Drawable?
 )
 
 data class SettingsUiState(
@@ -34,7 +44,11 @@ data class SettingsUiState(
     val monitoredApps: List<MonitoredAppUi> = emptyList(),
     val appVersion: String = "",
     val showDisconnectDialog: Boolean = false,
-    val showClearDataDialog: Boolean = false
+    val showClearDataDialog: Boolean = false,
+    val showAddAppDialog: Boolean = false,
+    val installedApps: List<InstalledAppUi> = emptyList(),
+    val appSearchQuery: String = "",
+    val isLoadingApps: Boolean = false
 )
 
 @HiltViewModel
@@ -48,28 +62,10 @@ class SettingsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
-    // Default banking apps to monitor
-    private val defaultApps = listOf(
-        AppConfigEntity("com.nu.production", "Nubank", true),
-        AppConfigEntity("br.com.intermedium", "Inter", true),
-        AppConfigEntity("com.itau", "Itaú", true),
-        AppConfigEntity("com.bradesco", "Bradesco", true),
-        AppConfigEntity("br.com.bb.android", "Banco do Brasil", true),
-        AppConfigEntity("com.santander.app", "Santander", true),
-        AppConfigEntity("br.com.gabba.Caixa", "Caixa", true),
-        AppConfigEntity("com.picpay", "PicPay", true),
-        AppConfigEntity("com.mercadopago.wallet", "Mercado Pago", true),
-        AppConfigEntity("com.c6bank.app", "C6 Bank", true),
-        AppConfigEntity("br.com.original.bank", "Banco Original", true),
-        AppConfigEntity("com.neon", "Neon", true),
-        AppConfigEntity("br.com.xpi.investor", "XP Investimentos", true),
-        AppConfigEntity("com.btgpactual.app", "BTG Pactual", true),
-        AppConfigEntity("br.com.safra.SafraWallet", "Safra", true)
-    )
+    private var allInstalledApps: List<InstalledAppUi> = emptyList()
 
     init {
         loadSettings()
-        initializeDefaultApps()
     }
 
     private fun loadSettings() {
@@ -92,15 +88,6 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    private fun initializeDefaultApps() {
-        viewModelScope.launch {
-            val existingApps = appConfigDao.getAll()
-            if (existingApps.isEmpty()) {
-                appConfigDao.insertAll(defaultApps)
-            }
-        }
-    }
-
     private suspend fun loadMonitoredApps() {
         val apps = appConfigDao.getAll()
         val uiApps = apps.map { app ->
@@ -117,6 +104,94 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             appConfigDao.setEnabled(packageName, enabled)
             loadMonitoredApps()
+        }
+    }
+
+    fun removeApp(packageName: String) {
+        viewModelScope.launch {
+            appConfigDao.delete(packageName)
+            loadMonitoredApps()
+        }
+    }
+
+    fun showAddAppDialog() {
+        _uiState.value = _uiState.value.copy(
+            showAddAppDialog = true,
+            appSearchQuery = "",
+            isLoadingApps = true
+        )
+        loadInstalledApps()
+    }
+
+    fun hideAddAppDialog() {
+        _uiState.value = _uiState.value.copy(
+            showAddAppDialog = false,
+            appSearchQuery = "",
+            installedApps = emptyList()
+        )
+    }
+
+    fun updateAppSearchQuery(query: String) {
+        _uiState.value = _uiState.value.copy(appSearchQuery = query)
+        filterInstalledApps(query)
+    }
+
+    private fun loadInstalledApps() {
+        viewModelScope.launch {
+            val apps = withContext(Dispatchers.IO) {
+                val pm = context.packageManager
+                val monitoredPackages = appConfigDao.getAll().map { it.packageName }.toSet()
+                
+                pm.getInstalledApplications(PackageManager.GET_META_DATA)
+                    .filter { appInfo ->
+                        // Only show apps with a launcher icon (user-facing apps)
+                        pm.getLaunchIntentForPackage(appInfo.packageName) != null &&
+                        // Exclude already monitored apps
+                        appInfo.packageName !in monitoredPackages &&
+                        // Exclude system apps without updates
+                        (appInfo.flags and ApplicationInfo.FLAG_SYSTEM == 0 ||
+                         appInfo.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP != 0)
+                    }
+                    .map { appInfo ->
+                        InstalledAppUi(
+                            packageName = appInfo.packageName,
+                            displayName = pm.getApplicationLabel(appInfo).toString(),
+                            icon = try { pm.getApplicationIcon(appInfo) } catch (e: Exception) { null }
+                        )
+                    }
+                    .sortedBy { it.displayName.lowercase() }
+            }
+            
+            allInstalledApps = apps
+            _uiState.value = _uiState.value.copy(
+                installedApps = apps,
+                isLoadingApps = false
+            )
+        }
+    }
+
+    private fun filterInstalledApps(query: String) {
+        val filtered = if (query.isBlank()) {
+            allInstalledApps
+        } else {
+            allInstalledApps.filter { app ->
+                app.displayName.contains(query, ignoreCase = true) ||
+                app.packageName.contains(query, ignoreCase = true)
+            }
+        }
+        _uiState.value = _uiState.value.copy(installedApps = filtered)
+    }
+
+    fun addApp(packageName: String, displayName: String) {
+        viewModelScope.launch {
+            val config = AppConfigEntity(
+                packageName = packageName,
+                displayName = displayName,
+                isEnabled = true
+            )
+            appConfigDao.insert(config)
+            loadMonitoredApps()
+            hideAddAppDialog()
         }
     }
 
