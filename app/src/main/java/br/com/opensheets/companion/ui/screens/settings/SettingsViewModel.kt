@@ -142,23 +142,31 @@ class SettingsViewModel @Inject constructor(
                 val pm = context.packageManager
                 val monitoredPackages = appConfigDao.getAll().map { it.packageName }.toSet()
                 
-                pm.getInstalledApplications(PackageManager.GET_META_DATA)
-                    .filter { appInfo ->
-                        // Exclude already monitored apps
-                        appInfo.packageName !in monitoredPackages &&
-                        // Exclude our own app
-                        appInfo.packageName != context.packageName &&
-                        // Show user apps OR updated system apps (like banking apps)
-                        (appInfo.flags and ApplicationInfo.FLAG_SYSTEM == 0 ||
-                         appInfo.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP != 0)
+                // Query apps that have a launcher activity (user-visible apps)
+                val launcherIntent = Intent(Intent.ACTION_MAIN).apply {
+                    addCategory(Intent.CATEGORY_LAUNCHER)
+                }
+                
+                pm.queryIntentActivities(launcherIntent, PackageManager.MATCH_ALL)
+                    .mapNotNull { resolveInfo ->
+                        val packageName = resolveInfo.activityInfo.packageName
+                        // Exclude already monitored and our own app
+                        if (packageName in monitoredPackages || packageName == context.packageName) {
+                            null
+                        } else {
+                            try {
+                                val appInfo = pm.getApplicationInfo(packageName, 0)
+                                InstalledAppUi(
+                                    packageName = packageName,
+                                    displayName = pm.getApplicationLabel(appInfo).toString(),
+                                    icon = try { pm.getApplicationIcon(appInfo) } catch (e: Exception) { null }
+                                )
+                            } catch (e: Exception) {
+                                null
+                            }
+                        }
                     }
-                    .map { appInfo ->
-                        InstalledAppUi(
-                            packageName = appInfo.packageName,
-                            displayName = pm.getApplicationLabel(appInfo).toString(),
-                            icon = try { pm.getApplicationIcon(appInfo) } catch (e: Exception) { null }
-                        )
-                    }
+                    .distinctBy { it.packageName }
                     .sortedBy { it.displayName.lowercase() }
             }
             
