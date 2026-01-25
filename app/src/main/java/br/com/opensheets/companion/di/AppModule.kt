@@ -21,10 +21,4 @@ object AppModule {
     ): SecureStorage {
         return SecureStorage(context)
     }
-
-    @Provides
-    @Singleton
-    fun provideNotificationParser(): NotificationParser {
-        return NotificationParser()
-    }
 }

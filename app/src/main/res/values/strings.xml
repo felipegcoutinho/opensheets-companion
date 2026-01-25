@@ -50,6 +50,24 @@
     <string name="settings_about">Sobre</string>
     <string name="settings_version">Versão</string>
 
+    <!-- Keywords Settings -->
+    <string name="settings_customization">Personalização</string>
+    <string name="settings_keywords_title">Termos de Classificação</string>
+    <string name="settings_keywords_subtitle">Personalizar palavras de despesa e receita</string>
+    <string name="settings_keywords_trigger">Gatilhos de Captura</string>
+    <string name="settings_keywords_trigger_desc">Palavras que ativam a captura da notificação</string>
+    <string name="settings_keywords_add_trigger">Adicionar Gatilho</string>
+    <string name="settings_keywords_expense">Termos de Despesa</string>
+    <string name="settings_keywords_expense_desc">Palavras que indicam gastos</string>
+    <string name="settings_keywords_income">Termos de Receita</string>
+    <string name="settings_keywords_income_desc">Palavras que indicam entradas</string>
+    <string name="settings_keywords_add">Adicionar</string>
+    <string name="settings_keywords_add_expense">Adicionar Termo de Despesa</string>
+    <string name="settings_keywords_add_income">Adicionar Termo de Receita</string>
+    <string name="settings_keywords_term">Termo</string>
+    <string name="settings_keywords_reset">Restaurar Padrões</string>
+    <string name="settings_keywords_reset_confirm">Isso irá restaurar todos os termos para os valores padrão. Deseja continuar?</string>
+
     <!-- Common -->
     <string name="cancel">Cancelar</string>
     <string name="confirm">Confirmar</string>

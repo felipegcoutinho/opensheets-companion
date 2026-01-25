@@ -5,12 +5,12 @@ import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
 import br.com.opensheets.companion.data.local.dao.AppConfigDao
+import br.com.opensheets.companion.data.local.dao.KeywordsSettingsDao
 import br.com.opensheets.companion.data.local.dao.NotificationDao
+import br.com.opensheets.companion.data.local.entities.KeywordsSettingsEntity
 import br.com.opensheets.companion.data.local.entities.NotificationEntity
 import br.com.opensheets.companion.domain.parser.NotificationParser
 import br.com.opensheets.companion.util.SecureStorage
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -29,13 +29,15 @@ class CaptureNotificationListenerService : NotificationListenerService() {
     lateinit var appConfigDao: AppConfigDao
 
     @Inject
+    lateinit var keywordsSettingsDao: KeywordsSettingsDao
+
+    @Inject
     lateinit var secureStorage: SecureStorage
 
     @Inject
     lateinit var notificationParser: NotificationParser
 
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private val gson = Gson()
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         // Check if app is configured
@@ -63,22 +65,19 @@ class CaptureNotificationListenerService : NotificationListenerService() {
                     return@launch
                 }
 
-                // Check keywords filter
-                val keywords: List<String> = try {
-                    val type = object : TypeToken<List<String>>() {}.type
-                    gson.fromJson(appConfig.keywords, type) ?: emptyList()
-                } catch (e: Exception) {
-                    emptyList()
+                // Get global trigger keywords
+                val settings = keywordsSettingsDao.get() ?: KeywordsSettingsEntity()
+                val triggerKeywords = settings.getTriggerKeywordsList()
+
+                // Check if notification matches any trigger keyword
+                val fullText = "${title.orEmpty()} $text".lowercase()
+                val matchesTrigger = triggerKeywords.any { trigger ->
+                    fullText.contains(trigger.lowercase())
                 }
 
-                if (keywords.isNotEmpty()) {
-                    val matchesKeyword = keywords.any { keyword ->
-                        text.contains(keyword, ignoreCase = true) ||
-                        (title?.contains(keyword, ignoreCase = true) == true)
-                    }
-                    if (!matchesKeyword) {
-                        return@launch
-                    }
+                if (!matchesTrigger) {
+                    Log.d(TAG, "Notification doesn't match any trigger: $text")
+                    return@launch
                 }
 
                 // Parse notification
@@ -94,7 +93,7 @@ class CaptureNotificationListenerService : NotificationListenerService() {
                     parsedName = parsed.merchantName,
                     parsedAmount = parsed.amount,
                     parsedDate = parsed.date?.time,
-                    parsedCardLastDigits = parsed.cardLastDigits,
+                    parsedCardLastDigits = null,
                     parsedTransactionType = parsed.transactionType
                 )
 
@@ -120,3 +119,4 @@ class CaptureNotificationListenerService : NotificationListenerService() {
         private const val TAG = "NotificationCapture"
     }
 }
+

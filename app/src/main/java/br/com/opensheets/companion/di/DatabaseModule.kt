@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import br.com.opensheets.companion.data.local.AppDatabase
 import br.com.opensheets.companion.data.local.dao.AppConfigDao
+import br.com.opensheets.companion.data.local.dao.KeywordsSettingsDao
 import br.com.opensheets.companion.data.local.dao.NotificationDao
 import dagger.Module
 import dagger.Provides
@@ -25,7 +26,9 @@ object DatabaseModule {
             context,
             AppDatabase::class.java,
             "opensheets_companion.db"
-        ).build()
+        )
+            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3)
+            .build()
     }
 
     @Provides
@@ -36,5 +39,10 @@ object DatabaseModule {
     @Provides
     fun provideAppConfigDao(database: AppDatabase): AppConfigDao {
         return database.appConfigDao()
+    }
+
+    @Provides
+    fun provideKeywordsSettingsDao(database: AppDatabase): KeywordsSettingsDao {
+        return database.keywordsSettingsDao()
     }
 }

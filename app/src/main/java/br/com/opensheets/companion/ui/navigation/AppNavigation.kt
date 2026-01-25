@@ -10,6 +10,7 @@ import androidx.navigation.compose.rememberNavController
 import br.com.opensheets.companion.ui.screens.history.HistoryScreen
 import br.com.opensheets.companion.ui.screens.home.HomeScreen
 import br.com.opensheets.companion.ui.screens.settings.SettingsScreen
+import br.com.opensheets.companion.ui.screens.settings.keywords.KeywordsSettingsScreen
 import br.com.opensheets.companion.ui.screens.setup.SetupScreen
 import br.com.opensheets.companion.ui.screens.setup.SetupViewModel
 
@@ -18,6 +19,7 @@ sealed class Screen(val route: String) {
     data object Home : Screen("home")
     data object History : Screen("history")
     data object Settings : Screen("settings")
+    data object KeywordsSettings : Screen("keywords_settings")
 }
 
 @Composable
@@ -67,8 +69,20 @@ fun AppNavigation() {
                     navController.navigate(Screen.Setup.route) {
                         popUpTo(Screen.Home.route) { inclusive = true }
                     }
+                },
+                onNavigateToKeywords = {
+                    navController.navigate(Screen.KeywordsSettings.route)
+                }
+            )
+        }
+
+        composable(Screen.KeywordsSettings.route) {
+            KeywordsSettingsScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
                 }
             )
         }
     }
 }
+
