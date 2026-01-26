@@ -63,18 +63,54 @@ class NotificationParser @Inject constructor(
     }
 
     private fun extractMerchant(text: String): String? {
-        val patterns = listOf(
-            Regex("""(?:em|no|na)\s+([A-Z][A-Z0-9\s*]+)""", RegexOption.IGNORE_CASE),
-            Regex("""-\s*([A-Z][A-Z0-9\s]+)\s*-"""),
-            Regex("""(?:compra|pagamento).*?(?:em|no|na)\s+(.+?)(?:\.|,|$)""", RegexOption.IGNORE_CASE)
+        // Delimitadores que indicam fim do nome do estabelecimento
+        val endMarkers = listOf(
+            " para o cartao", " para o cartão", " para cartao", " para cartão",
+            " no cartao", " no cartão", " com cartao", " com cartão",
+            " cartao final", " cartão final", " com final", " final ",
+            " no dia ", " às ", " as ", " dia ",
+            " - r$", " - R$", ". ", ", ", " boas compras",
+            " e recebeu", " e ganhou", " cashback", "\n"
         )
 
-        for (pattern in patterns) {
-            val match = pattern.find(text)
-            if (match != null) {
-                return match.groupValues[1].trim().take(50)
+        // Padrões para encontrar início do estabelecimento (em ordem de prioridade)
+        val startPatterns = listOf(
+            // Padrão 1: "em/no/na [ESTABELECIMENTO]" - mais comum
+            Regex("""(?:em|no|na)\s+([A-ZÀ-Ú][A-Za-zÀ-ú0-9\s&.*/_-]+)""", RegexOption.IGNORE_CASE),
+            // Padrão 2: "pagou/comprou R$ X a [ESTABELECIMENTO]" - Mercado Pago e similares
+            Regex("""(?:pagou|comprou|gastou)\s+R\$\s*[\d.,]+\s+a\s+([A-Za-zÀ-ú0-9\s&.*/_-]+)""", RegexOption.IGNORE_CASE),
+            // Padrão 3: "comprar R$ X a [ESTABELECIMENTO]"
+            Regex("""comprar\s+R\$\s*[\d.,]+\s+(?:em|a)\s+([A-Za-zÀ-ú0-9\s&.*/_-]+)""", RegexOption.IGNORE_CASE)
+        )
+
+        for (pattern in startPatterns) {
+            val match = pattern.find(text) ?: continue
+            var merchant = match.groupValues[1]
+
+            // Encontrar o delimitador de fim mais próximo
+            val lowerMerchant = merchant.lowercase()
+            var endIndex = merchant.length
+
+            for (marker in endMarkers) {
+                val markerIndex = lowerMerchant.indexOf(marker.lowercase())
+                if (markerIndex != -1 && markerIndex < endIndex) {
+                    endIndex = markerIndex
+                }
+            }
+
+            // Cortar no delimitador encontrado
+            merchant = merchant.substring(0, endIndex)
+
+            // Limpar resultado
+            val cleaned = merchant
+                .trim()
+                .trimEnd('.', ',', '-', ' ')
+
+            if (cleaned.length >= 2) {
+                return cleaned.take(50)
             }
         }
+
         return null
     }
 
