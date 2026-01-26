@@ -6,6 +6,7 @@ import br.com.opensheets.companion.data.local.AppDatabase
 import br.com.opensheets.companion.data.local.dao.AppConfigDao
 import br.com.opensheets.companion.data.local.dao.KeywordsSettingsDao
 import br.com.opensheets.companion.data.local.dao.NotificationDao
+import br.com.opensheets.companion.data.local.dao.SyncLogDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -27,7 +28,11 @@ object DatabaseModule {
             AppDatabase::class.java,
             "opensheets_companion.db"
         )
-            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3)
+            .addMigrations(
+                AppDatabase.MIGRATION_1_2,
+                AppDatabase.MIGRATION_2_3,
+                AppDatabase.MIGRATION_3_4
+            )
             .build()
     }
 
@@ -44,5 +49,10 @@ object DatabaseModule {
     @Provides
     fun provideKeywordsSettingsDao(database: AppDatabase): KeywordsSettingsDao {
         return database.keywordsSettingsDao()
+    }
+
+    @Provides
+    fun provideSyncLogDao(database: AppDatabase): SyncLogDao {
+        return database.syncLogDao()
     }
 }

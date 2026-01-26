@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
@@ -50,6 +51,7 @@ import br.com.opensheets.companion.data.local.entities.SyncStatus
 @Composable
 fun HomeScreen(
     onNavigateToSettings: () -> Unit,
+    onNavigateToLogs: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -59,6 +61,19 @@ fun HomeScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.home_title)) },
                 actions = {
+                    IconButton(
+                        onClick = { viewModel.refreshData() },
+                        enabled = !uiState.isRefreshing
+                    ) {
+                        if (uiState.isRefreshing) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(Icons.Default.Refresh, contentDescription = "Atualizar")
+                        }
+                    }
                     IconButton(onClick = onNavigateToSettings) {
                         Icon(Icons.Default.Settings, contentDescription = "Configurações")
                     }

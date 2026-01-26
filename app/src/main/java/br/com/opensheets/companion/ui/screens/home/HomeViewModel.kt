@@ -10,6 +10,8 @@ import br.com.opensheets.companion.data.local.dao.NotificationDao
 import br.com.opensheets.companion.data.local.entities.NotificationEntity
 import br.com.opensheets.companion.data.local.entities.SyncStatus
 import br.com.opensheets.companion.service.CaptureNotificationListenerService
+import br.com.opensheets.companion.service.SyncWorker
+import br.com.opensheets.companion.util.SecureStorage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,6 +46,7 @@ data class HomeUiState(
     val lastSyncTime: String? = null,
     val hasNotificationPermission: Boolean = false,
     val enabledAppsCount: Int = 0,
+    val isRefreshing: Boolean = false,
     // History
     val notifications: List<NotificationUiItem> = emptyList(),
     val selectedFilter: SyncStatusFilter = SyncStatusFilter.ALL,
@@ -54,7 +57,8 @@ data class HomeUiState(
 class HomeViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val notificationDao: NotificationDao,
-    private val appConfigDao: AppConfigDao
+    private val appConfigDao: AppConfigDao,
+    private val secureStorage: SecureStorage
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -86,10 +90,19 @@ class HomeViewModel @Inject constructor(
             // Get enabled apps count
             val enabledApps = appConfigDao.getEnabled()
 
+            // Get last sync time
+            val lastSyncTime = secureStorage.lastSyncTime
+            val lastSyncTimeFormatted = if (lastSyncTime > 0) {
+                dateFormatFull.format(Date(lastSyncTime))
+            } else {
+                null
+            }
+
             _uiState.value = _uiState.value.copy(
                 pendingCount = pendingCount,
                 syncedToday = syncedToday,
-                enabledAppsCount = enabledApps.size
+                enabledAppsCount = enabledApps.size,
+                lastSyncTime = lastSyncTimeFormatted
             )
         }
     }
@@ -173,9 +186,18 @@ class HomeViewModel @Inject constructor(
         // The actual navigation should be handled by the UI
     }
 
-    fun refreshStats() {
-        loadStats()
-        loadNotifications()
-        checkNotificationPermission()
+    fun refreshData() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isRefreshing = true)
+
+            loadStats()
+            loadNotifications()
+            checkNotificationPermission()
+
+            // Trigger a sync
+            SyncWorker.enqueue(context)
+
+            _uiState.value = _uiState.value.copy(isRefreshing = false)
+        }
     }
 }

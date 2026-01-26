@@ -32,14 +32,11 @@ data class RefreshTokenResponse(
 data class InboxRequest(
     val sourceApp: String,
     val sourceAppName: String?,
-    val deviceId: String?,
     val originalTitle: String?,
     val originalText: String,
     val notificationTimestamp: String,
     val parsedName: String?,
     val parsedAmount: Double?,
-    val parsedDate: String?,
-    val parsedCardLastDigits: String?,
     val parsedTransactionType: String?,
     val clientId: String?
 )

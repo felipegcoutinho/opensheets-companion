@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tune
@@ -66,6 +67,7 @@ fun SettingsScreen(
     onNavigateBack: () -> Unit,
     onDisconnected: () -> Unit,
     onNavigateToKeywords: () -> Unit,
+    onNavigateToLogs: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -261,6 +263,38 @@ fun SettingsScreen(
                             )
                             Text(
                                 text = stringResource(R.string.settings_keywords_subtitle),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = onNavigateToLogs
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.History,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Logs de Sincronização",
+                                style = MaterialTheme.typography.titleSmall
+                            )
+                            Text(
+                                text = "Visualizar histórico de envios",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

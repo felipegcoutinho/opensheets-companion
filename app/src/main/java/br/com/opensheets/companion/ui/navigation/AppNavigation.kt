@@ -9,6 +9,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import br.com.opensheets.companion.ui.screens.history.HistoryScreen
 import br.com.opensheets.companion.ui.screens.home.HomeScreen
+import br.com.opensheets.companion.ui.screens.logs.LogsScreen
 import br.com.opensheets.companion.ui.screens.settings.SettingsScreen
 import br.com.opensheets.companion.ui.screens.settings.keywords.KeywordsSettingsScreen
 import br.com.opensheets.companion.ui.screens.setup.SetupScreen
@@ -20,6 +21,7 @@ sealed class Screen(val route: String) {
     data object History : Screen("history")
     data object Settings : Screen("settings")
     data object KeywordsSettings : Screen("keywords_settings")
+    data object Logs : Screen("logs")
 }
 
 @Composable
@@ -48,6 +50,9 @@ fun AppNavigation() {
             HomeScreen(
                 onNavigateToSettings = {
                     navController.navigate(Screen.Settings.route)
+                },
+                onNavigateToLogs = {
+                    navController.navigate(Screen.Logs.route)
                 }
             )
         }
@@ -72,6 +77,9 @@ fun AppNavigation() {
                 },
                 onNavigateToKeywords = {
                     navController.navigate(Screen.KeywordsSettings.route)
+                },
+                onNavigateToLogs = {
+                    navController.navigate(Screen.Logs.route)
                 }
             )
         }
@@ -83,6 +91,13 @@ fun AppNavigation() {
                 }
             )
         }
+
+        composable(Screen.Logs.route) {
+            LogsScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
     }
 }
-

@@ -52,6 +52,10 @@ class SecureStorage @Inject constructor(
         get() = prefs.getString(KEY_DEVICE_ID, null)
         set(value) = prefs.edit().putString(KEY_DEVICE_ID, value).apply()
 
+    var lastSyncTime: Long
+        get() = prefs.getLong(KEY_LAST_SYNC_TIME, 0L)
+        set(value) = prefs.edit().putLong(KEY_LAST_SYNC_TIME, value).apply()
+
     fun isConfigured(): Boolean {
         return !serverUrl.isNullOrBlank() && !accessToken.isNullOrBlank()
     }
@@ -99,5 +103,6 @@ class SecureStorage @Inject constructor(
         private const val KEY_TOKEN_ID = "token_id"
         private const val KEY_TOKEN_NAME = "token_name"
         private const val KEY_DEVICE_ID = "device_id"
+        private const val KEY_LAST_SYNC_TIME = "last_sync_time"
     }
 }

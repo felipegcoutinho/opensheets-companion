@@ -12,6 +12,9 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import br.com.opensheets.companion.data.local.dao.NotificationDao
+import br.com.opensheets.companion.data.local.dao.SyncLogDao
+import br.com.opensheets.companion.data.local.entities.SyncLogEntity
+import br.com.opensheets.companion.data.local.entities.SyncLogType
 import br.com.opensheets.companion.data.local.entities.SyncStatus
 import br.com.opensheets.companion.data.remote.OpenSheetsApi
 import br.com.opensheets.companion.data.remote.dto.InboxBatchRequest
@@ -20,6 +23,7 @@ import br.com.opensheets.companion.util.SecureStorage
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -29,6 +33,7 @@ class SyncWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted params: WorkerParameters,
     private val notificationDao: NotificationDao,
+    private val syncLogDao: SyncLogDao,
     private val api: OpenSheetsApi,
     private val secureStorage: SecureStorage
 ) : CoroutineWorker(context, params) {
@@ -38,9 +43,13 @@ class SyncWorker @AssistedInject constructor(
     override suspend fun doWork(): Result {
         Log.d(TAG, "Starting sync work")
 
+        // Clean old logs (older than 7 days)
+        cleanOldLogs()
+
         // Check if configured
         if (!secureStorage.isConfigured()) {
             Log.w(TAG, "Not configured, skipping sync")
+            log(SyncLogType.WARNING, "Sincronização ignorada: app não configurado")
             return Result.failure()
         }
 
@@ -53,6 +62,7 @@ class SyncWorker @AssistedInject constructor(
         }
 
         Log.d(TAG, "Syncing ${pending.size} notifications")
+        log(SyncLogType.INFO, "Iniciando sincronização de ${pending.size} notificações")
 
         return try {
             // Mark as syncing
@@ -65,14 +75,11 @@ class SyncWorker @AssistedInject constructor(
                 InboxRequest(
                     sourceApp = notification.sourceApp,
                     sourceAppName = notification.sourceAppName,
-                    deviceId = secureStorage.deviceId,
                     originalTitle = notification.originalTitle,
                     originalText = notification.originalText,
                     notificationTimestamp = dateFormat.format(Date(notification.notificationTimestamp)),
                     parsedName = notification.parsedName,
                     parsedAmount = notification.parsedAmount,
-                    parsedDate = notification.parsedDate?.let { dateFormat.format(Date(it)) },
-                    parsedCardLastDigits = notification.parsedCardLastDigits,
                     parsedTransactionType = notification.parsedTransactionType,
                     clientId = notification.id
                 )
@@ -82,18 +89,35 @@ class SyncWorker @AssistedInject constructor(
 
             if (response.isSuccessful) {
                 val body = response.body()
+                var successCount = 0
+                var failCount = 0
 
                 body?.results?.forEach { result ->
                     val clientId = result.clientId ?: return@forEach
 
                     if (result.success && result.serverId != null) {
                         notificationDao.markSynced(clientId, result.serverId)
+                        successCount++
                     } else {
                         notificationDao.markSyncFailed(clientId, result.error)
+                        log(
+                            SyncLogType.ERROR,
+                            "Falha ao sincronizar notificação",
+                            clientId,
+                            result.error
+                        )
+                        failCount++
                     }
                 }
 
                 Log.d(TAG, "Sync completed: ${body?.success}/${body?.total} successful")
+                log(
+                    SyncLogType.SUCCESS,
+                    "Sincronização concluída: $successCount enviadas, $failCount falhas"
+                )
+
+                // Update last sync time
+                secureStorage.lastSyncTime = System.currentTimeMillis()
 
                 // If there are more pending, schedule another sync
                 val remainingCount = notificationDao.countPending()
@@ -108,7 +132,7 @@ class SyncWorker @AssistedInject constructor(
                 if (errorCode == 401) {
                     // Token expired, try to refresh
                     Log.w(TAG, "Token expired, attempting refresh")
-                    // TODO: Implement token refresh
+                    log(SyncLogType.ERROR, "Token expirado", details = "HTTP 401")
                     pending.forEach { notification ->
                         notificationDao.markSyncFailed(notification.id, "Token expirado")
                     }
@@ -116,12 +140,14 @@ class SyncWorker @AssistedInject constructor(
                 } else if (errorCode == 429) {
                     // Rate limited, retry later
                     Log.w(TAG, "Rate limited, will retry")
+                    log(SyncLogType.WARNING, "Limite de requisições atingido, tentando novamente...")
                     pending.forEach { notification ->
                         notificationDao.updateStatus(notification.id, SyncStatus.PENDING_SYNC)
                     }
                     Result.retry()
                 } else {
                     Log.e(TAG, "Sync failed with code $errorCode")
+                    log(SyncLogType.ERROR, "Falha na sincronização", details = "HTTP $errorCode")
                     pending.forEach { notification ->
                         notificationDao.markSyncFailed(notification.id, "HTTP $errorCode")
                     }
@@ -130,11 +156,35 @@ class SyncWorker @AssistedInject constructor(
             }
         } catch (e: Exception) {
             Log.e(TAG, "Sync failed with exception", e)
+            log(SyncLogType.ERROR, "Erro na sincronização", details = e.message)
             pending.forEach { notification ->
                 notificationDao.markSyncFailed(notification.id, e.message)
             }
             Result.retry()
         }
+    }
+
+    private suspend fun log(
+        type: SyncLogType,
+        message: String,
+        notificationId: String? = null,
+        details: String? = null
+    ) {
+        syncLogDao.insert(
+            SyncLogEntity(
+                type = type,
+                message = message,
+                notificationId = notificationId,
+                details = details
+            )
+        )
+    }
+
+    private suspend fun cleanOldLogs() {
+        val sevenDaysAgo = Calendar.getInstance().apply {
+            add(Calendar.DAY_OF_YEAR, -7)
+        }.timeInMillis
+        syncLogDao.deleteOlderThan(sevenDaysAgo)
     }
 
     companion object {

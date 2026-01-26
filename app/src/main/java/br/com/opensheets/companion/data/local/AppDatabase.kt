@@ -7,23 +7,27 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import br.com.opensheets.companion.data.local.dao.AppConfigDao
 import br.com.opensheets.companion.data.local.dao.KeywordsSettingsDao
 import br.com.opensheets.companion.data.local.dao.NotificationDao
+import br.com.opensheets.companion.data.local.dao.SyncLogDao
 import br.com.opensheets.companion.data.local.entities.AppConfigEntity
 import br.com.opensheets.companion.data.local.entities.KeywordsSettingsEntity
 import br.com.opensheets.companion.data.local.entities.NotificationEntity
+import br.com.opensheets.companion.data.local.entities.SyncLogEntity
 
 @Database(
     entities = [
         NotificationEntity::class,
         AppConfigEntity::class,
-        KeywordsSettingsEntity::class
+        KeywordsSettingsEntity::class,
+        SyncLogEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun notificationDao(): NotificationDao
     abstract fun appConfigDao(): AppConfigDao
     abstract fun keywordsSettingsDao(): KeywordsSettingsDao
+    abstract fun syncLogDao(): SyncLogDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -58,6 +62,21 @@ abstract class AppDatabase : RoomDatabase() {
                 """.trimIndent())
             }
         }
+
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Create sync_logs table
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS sync_logs (
+                        id TEXT PRIMARY KEY NOT NULL,
+                        timestamp INTEGER NOT NULL,
+                        type TEXT NOT NULL,
+                        message TEXT NOT NULL,
+                        notification_id TEXT,
+                        details TEXT
+                    )
+                """.trimIndent())
+            }
+        }
     }
 }
-
