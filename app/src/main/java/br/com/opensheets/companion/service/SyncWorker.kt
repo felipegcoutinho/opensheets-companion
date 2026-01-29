@@ -80,7 +80,6 @@ class SyncWorker @AssistedInject constructor(
                     notificationTimestamp = dateFormat.format(Date(notification.notificationTimestamp)),
                     parsedName = notification.parsedName,
                     parsedAmount = notification.parsedAmount,
-                    parsedTransactionType = notification.parsedTransactionType,
                     clientId = notification.id
                 )
             }

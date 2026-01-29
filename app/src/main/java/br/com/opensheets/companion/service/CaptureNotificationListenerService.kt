@@ -92,9 +92,8 @@ class CaptureNotificationListenerService : NotificationListenerService() {
                     notificationTimestamp = sbn.postTime,
                     parsedName = parsed.merchantName,
                     parsedAmount = parsed.amount,
-                    parsedDate = parsed.date?.time,
-                    parsedCardLastDigits = null,
-                    parsedTransactionType = parsed.transactionType
+                    parsedDate = null,
+                    parsedCardLastDigits = null
                 )
 
                 notificationDao.insert(notification)

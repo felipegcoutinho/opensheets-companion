@@ -37,9 +37,6 @@ data class NotificationEntity(
     @ColumnInfo(name = "parsed_card_last_digits")
     val parsedCardLastDigits: String?,
 
-    @ColumnInfo(name = "parsed_transaction_type")
-    val parsedTransactionType: String?,
-
     @ColumnInfo(name = "sync_status")
     val syncStatus: SyncStatus = SyncStatus.PENDING_SYNC,
 

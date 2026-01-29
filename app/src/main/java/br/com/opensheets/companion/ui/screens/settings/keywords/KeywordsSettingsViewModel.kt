@@ -13,12 +13,8 @@ import javax.inject.Inject
 
 data class KeywordsSettingsUiState(
     val triggerKeywords: List<String> = emptyList(),
-    val expenseKeywords: List<String> = emptyList(),
-    val incomeKeywords: List<String> = emptyList(),
     val isLoading: Boolean = true,
     val showAddTriggerDialog: Boolean = false,
-    val showAddExpenseDialog: Boolean = false,
-    val showAddIncomeDialog: Boolean = false,
     val newKeyword: String = "",
     val showResetDialog: Boolean = false,
     val saveSuccess: Boolean = false
@@ -41,8 +37,6 @@ class KeywordsSettingsViewModel @Inject constructor(
             val settings = keywordsSettingsDao.get() ?: KeywordsSettingsEntity()
             _uiState.value = _uiState.value.copy(
                 triggerKeywords = settings.getTriggerKeywordsList(),
-                expenseKeywords = settings.getExpenseKeywordsList(),
-                incomeKeywords = settings.getIncomeKeywordsList(),
                 isLoading = false
             )
         }
@@ -76,62 +70,6 @@ class KeywordsSettingsViewModel @Inject constructor(
         saveKeywords()
     }
 
-    // Expense Keywords
-    fun showAddExpenseDialog() {
-        _uiState.value = _uiState.value.copy(showAddExpenseDialog = true, newKeyword = "")
-    }
-
-    fun hideAddExpenseDialog() {
-        _uiState.value = _uiState.value.copy(showAddExpenseDialog = false, newKeyword = "")
-    }
-
-    fun addExpenseKeyword() {
-        val keyword = _uiState.value.newKeyword.trim().lowercase()
-        if (keyword.isNotEmpty() && keyword !in _uiState.value.expenseKeywords) {
-            val newList = _uiState.value.expenseKeywords + keyword
-            _uiState.value = _uiState.value.copy(
-                expenseKeywords = newList,
-                showAddExpenseDialog = false,
-                newKeyword = ""
-            )
-            saveKeywords()
-        }
-    }
-
-    fun removeExpenseKeyword(keyword: String) {
-        val newList = _uiState.value.expenseKeywords - keyword
-        _uiState.value = _uiState.value.copy(expenseKeywords = newList)
-        saveKeywords()
-    }
-
-    // Income Keywords
-    fun showAddIncomeDialog() {
-        _uiState.value = _uiState.value.copy(showAddIncomeDialog = true, newKeyword = "")
-    }
-
-    fun hideAddIncomeDialog() {
-        _uiState.value = _uiState.value.copy(showAddIncomeDialog = false, newKeyword = "")
-    }
-
-    fun addIncomeKeyword() {
-        val keyword = _uiState.value.newKeyword.trim().lowercase()
-        if (keyword.isNotEmpty() && keyword !in _uiState.value.incomeKeywords) {
-            val newList = _uiState.value.incomeKeywords + keyword
-            _uiState.value = _uiState.value.copy(
-                incomeKeywords = newList,
-                showAddIncomeDialog = false,
-                newKeyword = ""
-            )
-            saveKeywords()
-        }
-    }
-
-    fun removeIncomeKeyword(keyword: String) {
-        val newList = _uiState.value.incomeKeywords - keyword
-        _uiState.value = _uiState.value.copy(incomeKeywords = newList)
-        saveKeywords()
-    }
-
     fun updateNewKeyword(keyword: String) {
         _uiState.value = _uiState.value.copy(newKeyword = keyword)
     }
@@ -148,8 +86,6 @@ class KeywordsSettingsViewModel @Inject constructor(
         val defaults = KeywordsSettingsEntity()
         _uiState.value = _uiState.value.copy(
             triggerKeywords = defaults.getTriggerKeywordsList(),
-            expenseKeywords = defaults.getExpenseKeywordsList(),
-            incomeKeywords = defaults.getIncomeKeywordsList(),
             showResetDialog = false
         )
         saveKeywords()
@@ -157,10 +93,8 @@ class KeywordsSettingsViewModel @Inject constructor(
 
     private fun saveKeywords() {
         viewModelScope.launch {
-            val entity = KeywordsSettingsEntity.fromKeywordLists(
-                _uiState.value.triggerKeywords,
-                _uiState.value.expenseKeywords,
-                _uiState.value.incomeKeywords
+            val entity = KeywordsSettingsEntity.fromKeywordList(
+                _uiState.value.triggerKeywords
             )
             keywordsSettingsDao.save(entity)
             _uiState.value = _uiState.value.copy(saveSuccess = true)
@@ -171,4 +105,3 @@ class KeywordsSettingsViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(saveSuccess = false)
     }
 }
-

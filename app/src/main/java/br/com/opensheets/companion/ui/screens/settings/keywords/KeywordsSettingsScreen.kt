@@ -94,32 +94,13 @@ fun KeywordsSettingsScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Trigger Keywords Section (most important - at top)
+                // Trigger Keywords Section
                 KeywordSection(
                     title = stringResource(R.string.settings_keywords_trigger),
                     description = stringResource(R.string.settings_keywords_trigger_desc),
                     keywords = uiState.triggerKeywords,
                     onAddClick = { viewModel.showAddTriggerDialog() },
-                    onRemoveKeyword = { viewModel.removeTriggerKeyword(it) },
-                    isPrimary = true
-                )
-
-                // Expense Keywords Section
-                KeywordSection(
-                    title = stringResource(R.string.settings_keywords_expense),
-                    description = stringResource(R.string.settings_keywords_expense_desc),
-                    keywords = uiState.expenseKeywords,
-                    onAddClick = { viewModel.showAddExpenseDialog() },
-                    onRemoveKeyword = { viewModel.removeExpenseKeyword(it) }
-                )
-
-                // Income Keywords Section
-                KeywordSection(
-                    title = stringResource(R.string.settings_keywords_income),
-                    description = stringResource(R.string.settings_keywords_income_desc),
-                    keywords = uiState.incomeKeywords,
-                    onAddClick = { viewModel.showAddIncomeDialog() },
-                    onRemoveKeyword = { viewModel.removeIncomeKeyword(it) }
+                    onRemoveKeyword = { viewModel.removeTriggerKeyword(it) }
                 )
             }
         }
@@ -133,28 +114,6 @@ fun KeywordsSettingsScreen(
             onKeywordChange = { viewModel.updateNewKeyword(it) },
             onConfirm = { viewModel.addTriggerKeyword() },
             onDismiss = { viewModel.hideAddTriggerDialog() }
-        )
-    }
-
-    // Add Expense Keyword Dialog
-    if (uiState.showAddExpenseDialog) {
-        AddKeywordDialog(
-            title = stringResource(R.string.settings_keywords_add_expense),
-            keyword = uiState.newKeyword,
-            onKeywordChange = { viewModel.updateNewKeyword(it) },
-            onConfirm = { viewModel.addExpenseKeyword() },
-            onDismiss = { viewModel.hideAddExpenseDialog() }
-        )
-    }
-
-    // Add Income Keyword Dialog
-    if (uiState.showAddIncomeDialog) {
-        AddKeywordDialog(
-            title = stringResource(R.string.settings_keywords_add_income),
-            keyword = uiState.newKeyword,
-            onKeywordChange = { viewModel.updateNewKeyword(it) },
-            onConfirm = { viewModel.addIncomeKeyword() },
-            onDismiss = { viewModel.hideAddIncomeDialog() }
         )
     }
 
@@ -185,17 +144,12 @@ private fun KeywordSection(
     description: String,
     keywords: List<String>,
     onAddClick: () -> Unit,
-    onRemoveKeyword: (String) -> Unit,
-    isPrimary: Boolean = false
+    onRemoveKeyword: (String) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = if (isPrimary) {
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant
-            }
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
         )
     ) {
         Column(
@@ -211,7 +165,7 @@ private fun KeywordSection(
                         text = title,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
-                        color = if (isPrimary) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.primary
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(

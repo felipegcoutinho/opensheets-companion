@@ -37,7 +37,6 @@ data class InboxRequest(
     val notificationTimestamp: String,
     val parsedName: String?,
     val parsedAmount: Double?,
-    val parsedTransactionType: String?,
     val clientId: String?
 )
 

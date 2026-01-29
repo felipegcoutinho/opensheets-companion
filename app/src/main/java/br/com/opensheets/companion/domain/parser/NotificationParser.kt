@@ -1,44 +1,29 @@
 package br.com.opensheets.companion.domain.parser
 
-import br.com.opensheets.companion.data.local.dao.KeywordsSettingsDao
-import br.com.opensheets.companion.data.local.entities.KeywordsSettingsEntity
-import java.util.Date
 import javax.inject.Inject
 import javax.inject.Singleton
 
 data class ParsedNotification(
     val merchantName: String? = null,
-    val amount: Double? = null,
-    val date: Date? = null,
-    val transactionType: String? = null // "Despesa" or "Receita"
+    val amount: Double? = null
 )
 
 /**
  * Parser for financial notifications.
  * Uses generic patterns to extract transaction data from notification text.
- * Classification keywords are loaded from database settings.
  */
 @Singleton
-class NotificationParser @Inject constructor(
-    private val keywordsSettingsDao: KeywordsSettingsDao
-) {
+class NotificationParser @Inject constructor() {
 
     /**
-     * Parse notification and classify transaction type.
-     * This is a suspend function to load keywords from database.
+     * Parse notification to extract amount and merchant name.
      */
-    suspend fun parse(packageName: String, title: String?, text: String): ParsedNotification {
+    fun parse(packageName: String, title: String?, text: String): ParsedNotification {
         val fullText = listOfNotNull(title, text).joinToString(" ")
-        
-        // Load keywords fresh from database
-        val settings = keywordsSettingsDao.get() ?: KeywordsSettingsEntity()
-        val expenseKeywords = settings.getExpenseKeywordsList()
-        val incomeKeywords = settings.getIncomeKeywordsList()
 
         return ParsedNotification(
             amount = extractAmount(fullText),
-            merchantName = extractMerchant(fullText),
-            transactionType = inferTransactionType(fullText, expenseKeywords, incomeKeywords)
+            merchantName = extractMerchant(fullText)
         )
     }
 
@@ -112,27 +97,6 @@ class NotificationParser @Inject constructor(
         }
 
         return null
-    }
-
-    private fun inferTransactionType(
-        text: String,
-        expenseKeywords: List<String>,
-        incomeKeywords: List<String>
-    ): String {
-        val lowerText = text.lowercase()
-
-        // Check income keywords first (less common)
-        if (incomeKeywords.isNotEmpty() && incomeKeywords.any { it.isNotEmpty() && lowerText.contains(it) }) {
-            return "Receita"
-        }
-
-        // Check expense keywords
-        if (expenseKeywords.isNotEmpty() && expenseKeywords.any { it.isNotEmpty() && lowerText.contains(it) }) {
-            return "Despesa"
-        }
-
-        // Default to expense (most notifications are expenses)
-        return "Despesa"
     }
 }
 
