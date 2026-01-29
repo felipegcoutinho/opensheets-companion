@@ -1,5 +1,7 @@
 package br.com.opensheets.companion.ui.screens.home
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +25,8 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -39,7 +43,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.res.stringResource
+import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -51,6 +58,7 @@ import br.com.opensheets.companion.data.local.entities.SyncStatus
 @Composable
 fun HomeScreen(
     onNavigateToSettings: () -> Unit,
+    onNavigateToKeywords: () -> Unit = {},
     onNavigateToLogs: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
@@ -61,6 +69,12 @@ fun HomeScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.home_title)) },
                 actions = {
+                    IconButton(onClick = onNavigateToKeywords) {
+                        Icon(Icons.Outlined.Tune, contentDescription = "Gatilhos de captura")
+                    }
+                    IconButton(onClick = onNavigateToLogs) {
+                        Icon(Icons.Outlined.History, contentDescription = "Logs de sincronização")
+                    }
                     IconButton(
                         onClick = { viewModel.refreshData() },
                         enabled = !uiState.isRefreshing
@@ -108,23 +122,15 @@ fun HomeScreen(
             // Monitored Apps Summary
             item {
                 MonitoredAppsCard(
-                    enabledAppsCount = uiState.enabledAppsCount
+                    enabledAppsCount = uiState.enabledAppsCount,
+                    monitoredApps = uiState.monitoredApps
                 )
             }
 
-            // Filter chips
+            // Filter tabs with title
             item {
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Notificações Capturadas",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-
-            item {
-                FilterChipsRow(
+                FilterSection(
                     selectedFilter = uiState.selectedFilter,
                     onFilterSelected = viewModel::setFilter
                 )
@@ -177,34 +183,67 @@ fun HomeScreen(
 }
 
 @Composable
-private fun FilterChipsRow(
+private fun FilterSection(
     selectedFilter: SyncStatusFilter,
     onFilterSelected: (SyncStatusFilter) -> Unit
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    val filters = listOf(
+        Triple(SyncStatusFilter.ALL, Icons.Default.Notifications, "Todos"),
+        Triple(SyncStatusFilter.PENDING, Icons.Default.Schedule, "Pendentes"),
+        Triple(SyncStatusFilter.SYNCED, Icons.Default.CheckCircle, "Sincronizados"),
+        Triple(SyncStatusFilter.FAILED, Icons.Default.Error, "Falha")
+    )
+
+    val selectedLabel = filters.first { it.first == selectedFilter }.third
+
+    Column(
+        modifier = Modifier.fillMaxWidth()
     ) {
-        FilterChip(
-            selected = selectedFilter == SyncStatusFilter.ALL,
-            onClick = { onFilterSelected(SyncStatusFilter.ALL) },
-            label = { Text("Todos") }
-        )
-        FilterChip(
-            selected = selectedFilter == SyncStatusFilter.PENDING,
-            onClick = { onFilterSelected(SyncStatusFilter.PENDING) },
-            label = { Text("Pendentes") }
-        )
-        FilterChip(
-            selected = selectedFilter == SyncStatusFilter.SYNCED,
-            onClick = { onFilterSelected(SyncStatusFilter.SYNCED) },
-            label = { Text("Sincronizados") }
-        )
-        FilterChip(
-            selected = selectedFilter == SyncStatusFilter.FAILED,
-            onClick = { onFilterSelected(SyncStatusFilter.FAILED) },
-            label = { Text("Falha") }
-        )
+        // Title with selected filter
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Notificações Capturadas",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = " | $selectedLabel",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Filter tabs - full width with centered icons
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            filters.forEach { (filter, icon, _) ->
+                val isSelected = selectedFilter == filter
+                FilterChip(
+                    selected = isSelected,
+                    onClick = { onFilterSelected(filter) },
+                    label = {
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
     }
 }
 
@@ -216,11 +255,7 @@ private fun NotificationCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = when (notification.syncStatus) {
-                SyncStatus.SYNCED -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
-                SyncStatus.SYNC_FAILED -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
-                else -> MaterialTheme.colorScheme.surfaceVariant
-            }
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
         Column(
@@ -231,17 +266,11 @@ private fun NotificationCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    SyncStatusIcon(notification.syncStatus)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = notification.appName,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
+                Text(
+                    text = notification.appName,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -284,11 +313,17 @@ private fun NotificationCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            // Parsed data
-            if (notification.parsedAmount != null || notification.parsedName != null) {
-                Spacer(modifier = Modifier.height(8.dp))
+            // Parsed data and status
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Parsed data
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.weight(1f)
                 ) {
                     notification.parsedAmount?.let { amount ->
                         Text(
@@ -307,25 +342,38 @@ private fun NotificationCard(
                         )
                     }
                 }
+
+                // Status badge
+                SyncStatusBadge(notification.syncStatus)
             }
         }
     }
 }
 
 @Composable
-private fun SyncStatusIcon(status: SyncStatus) {
-    val (icon, tint) = when (status) {
-        SyncStatus.SYNCED -> Icons.Default.CheckCircle to MaterialTheme.colorScheme.primary
-        SyncStatus.SYNC_FAILED -> Icons.Default.Error to MaterialTheme.colorScheme.error
-        else -> Icons.Default.Schedule to MaterialTheme.colorScheme.onSurfaceVariant
+private fun SyncStatusBadge(status: SyncStatus) {
+    val (icon, text, color) = when (status) {
+        SyncStatus.SYNCED -> Triple(Icons.Default.CheckCircle, "Sincronizado", MaterialTheme.colorScheme.primary)
+        SyncStatus.SYNC_FAILED -> Triple(Icons.Default.Error, "Falha", MaterialTheme.colorScheme.error)
+        else -> Triple(Icons.Default.Schedule, "Pendente", MaterialTheme.colorScheme.onSurfaceVariant)
     }
 
-    Icon(
-        imageVector = icon,
-        contentDescription = null,
-        modifier = Modifier.size(16.dp),
-        tint = tint
-    )
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(14.dp),
+            tint = color
+        )
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            color = color
+        )
+    }
 }
 
 @Composable
@@ -462,7 +510,8 @@ private fun PermissionCard(
 
 @Composable
 private fun MonitoredAppsCard(
-    enabledAppsCount: Int
+    enabledAppsCount: Int,
+    monitoredApps: List<MonitoredAppIcon>
 ) {
     Card(
         modifier = Modifier.fillMaxWidth()
@@ -474,7 +523,7 @@ private fun MonitoredAppsCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = stringResource(R.string.settings_monitored_apps),
                     style = MaterialTheme.typography.titleSmall
@@ -484,6 +533,39 @@ private fun MonitoredAppsCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+            // App icons
+            if (monitoredApps.isNotEmpty()) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy((-8).dp)
+                ) {
+                    monitoredApps.take(5).forEach { app ->
+                        app.icon?.let { icon ->
+                            Image(
+                                painter = rememberDrawablePainter(drawable = icon),
+                                contentDescription = app.displayName,
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                            )
+                        }
+                    }
+                    if (monitoredApps.size > 5) {
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "+${monitoredApps.size - 5}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
             }
         }
     }

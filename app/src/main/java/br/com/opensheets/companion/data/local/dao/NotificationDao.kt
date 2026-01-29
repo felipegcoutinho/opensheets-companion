@@ -47,6 +47,9 @@ interface NotificationDao {
     @Query("SELECT COUNT(*) FROM notifications WHERE created_at >= :since")
     suspend fun countSince(since: Long): Int
 
+    @Query("SELECT COUNT(*) FROM notifications WHERE sync_status = :status AND created_at >= :since")
+    suspend fun countSyncedSince(since: Long, status: SyncStatus = SyncStatus.SYNCED): Int
+
     @Query("UPDATE notifications SET sync_status = :status WHERE id = :id")
     suspend fun updateStatus(id: String, status: SyncStatus)
 

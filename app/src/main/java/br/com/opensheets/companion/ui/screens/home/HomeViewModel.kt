@@ -2,6 +2,7 @@ package br.com.opensheets.companion.ui.screens.home
 
 import android.content.ComponentName
 import android.content.Context
+import android.graphics.drawable.Drawable
 import android.provider.Settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -40,12 +41,19 @@ enum class SyncStatusFilter {
     ALL, PENDING, SYNCED, FAILED
 }
 
+data class MonitoredAppIcon(
+    val packageName: String,
+    val displayName: String,
+    val icon: Drawable?
+)
+
 data class HomeUiState(
     val pendingCount: Int = 0,
     val syncedToday: Int = 0,
     val lastSyncTime: String? = null,
     val hasNotificationPermission: Boolean = false,
     val enabledAppsCount: Int = 0,
+    val monitoredApps: List<MonitoredAppIcon> = emptyList(),
     val isRefreshing: Boolean = false,
     // History
     val notifications: List<NotificationUiItem> = emptyList(),
@@ -85,10 +93,23 @@ class HomeViewModel @Inject constructor(
                 set(Calendar.SECOND, 0)
                 set(Calendar.MILLISECOND, 0)
             }.timeInMillis
-            val syncedToday = notificationDao.countSince(todayStart)
+            val syncedToday = notificationDao.countSyncedSince(todayStart)
 
-            // Get enabled apps count
+            // Get enabled apps with icons
             val enabledApps = appConfigDao.getEnabled()
+            val pm = context.packageManager
+            val appsWithIcons = enabledApps.map { app ->
+                val icon = try {
+                    pm.getApplicationIcon(app.packageName)
+                } catch (e: Exception) {
+                    null
+                }
+                MonitoredAppIcon(
+                    packageName = app.packageName,
+                    displayName = app.displayName,
+                    icon = icon
+                )
+            }
 
             // Get last sync time
             val lastSyncTime = secureStorage.lastSyncTime
@@ -102,6 +123,7 @@ class HomeViewModel @Inject constructor(
                 pendingCount = pendingCount,
                 syncedToday = syncedToday,
                 enabledAppsCount = enabledApps.size,
+                monitoredApps = appsWithIcons,
                 lastSyncTime = lastSyncTimeFormatted
             )
         }
@@ -142,10 +164,10 @@ class HomeViewModel @Inject constructor(
         return when (filter) {
             SyncStatusFilter.ALL -> notifications
             SyncStatusFilter.PENDING -> notifications.filter {
-                it.syncStatus == SyncStatus.PENDING_SYNC
+                it.syncStatus == SyncStatus.PENDING_SYNC || it.syncStatus == SyncStatus.SYNCING
             }
             SyncStatusFilter.SYNCED -> notifications.filter {
-                it.syncStatus == SyncStatus.SYNCED
+                it.syncStatus == SyncStatus.SYNCED || it.syncStatus == SyncStatus.PROCESSED
             }
             SyncStatusFilter.FAILED -> notifications.filter {
                 it.syncStatus == SyncStatus.SYNC_FAILED

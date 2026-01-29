@@ -51,6 +51,9 @@ fun AppNavigation() {
                 onNavigateToSettings = {
                     navController.navigate(Screen.Settings.route)
                 },
+                onNavigateToKeywords = {
+                    navController.navigate(Screen.KeywordsSettings.route)
+                },
                 onNavigateToLogs = {
                     navController.navigate(Screen.Logs.route)
                 }
@@ -74,12 +77,6 @@ fun AppNavigation() {
                     navController.navigate(Screen.Setup.route) {
                         popUpTo(Screen.Home.route) { inclusive = true }
                     }
-                },
-                onNavigateToKeywords = {
-                    navController.navigate(Screen.KeywordsSettings.route)
-                },
-                onNavigateToLogs = {
-                    navController.navigate(Screen.Logs.route)
                 }
             )
         }

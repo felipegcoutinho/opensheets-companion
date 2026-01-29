@@ -22,11 +22,10 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -66,8 +65,6 @@ import com.google.accompanist.drawablepainter.rememberDrawablePainter
 fun SettingsScreen(
     onNavigateBack: () -> Unit,
     onDisconnected: () -> Unit,
-    onNavigateToKeywords: () -> Unit,
-    onNavigateToLogs: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -138,6 +135,44 @@ fun SettingsScreen(
         )
     }
 
+    // Edit server dialog
+    if (uiState.showEditServerDialog) {
+        AlertDialog(
+            onDismissRequest = viewModel::hideEditServerDialog,
+            title = { Text("Editar Servidor") },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedTextField(
+                        value = uiState.editServerUrl,
+                        onValueChange = viewModel::updateEditServerUrl,
+                        label = { Text("URL do Servidor") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = uiState.editToken,
+                        onValueChange = viewModel::updateEditToken,
+                        label = { Text("Token de Acesso") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = viewModel::saveServerSettings) {
+                    Text("Salvar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::hideEditServerDialog) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -167,6 +202,7 @@ fun SettingsScreen(
                     serverUrl = uiState.serverUrl,
                     tokenName = uiState.tokenName,
                     isConnected = uiState.isConnected,
+                    onEdit = viewModel::showEditServerDialog,
                     onDisconnect = viewModel::showDisconnectDialog
                 )
             }
@@ -231,76 +267,6 @@ fun SettingsScreen(
                     onToggle = { enabled -> viewModel.toggleApp(app.packageName, enabled) },
                     onRemove = { viewModel.removeApp(app.packageName) }
                 )
-            }
-
-            // Customization Section
-            item {
-                Spacer(modifier = Modifier.height(8.dp))
-                SectionHeader(title = stringResource(R.string.settings_customization))
-            }
-
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = onNavigateToKeywords
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Tune,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = stringResource(R.string.settings_keywords_title),
-                                style = MaterialTheme.typography.titleSmall
-                            )
-                            Text(
-                                text = stringResource(R.string.settings_keywords_subtitle),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            }
-
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = onNavigateToLogs
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.History,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Logs de Sincronização",
-                                style = MaterialTheme.typography.titleSmall
-                            )
-                            Text(
-                                text = "Visualizar histórico de envios",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
             }
 
             // Data Section
@@ -506,6 +472,7 @@ private fun ServerCard(
     serverUrl: String,
     tokenName: String,
     isConnected: Boolean,
+    onEdit: () -> Unit,
     onDisconnect: () -> Unit
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
@@ -539,13 +506,22 @@ private fun ServerCard(
                         style = MaterialTheme.typography.titleSmall
                     )
                 }
-                if (isConnected) {
-                    IconButton(onClick = onDisconnect) {
+                Row {
+                    IconButton(onClick = onEdit) {
                         Icon(
-                            Icons.AutoMirrored.Filled.Logout,
-                            contentDescription = "Desconectar",
-                            tint = MaterialTheme.colorScheme.error
+                            Icons.Default.Edit,
+                            contentDescription = "Editar",
+                            tint = MaterialTheme.colorScheme.primary
                         )
+                    }
+                    if (isConnected) {
+                        IconButton(onClick = onDisconnect) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.Logout,
+                                contentDescription = "Desconectar",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
                     }
                 }
             }
@@ -644,8 +620,17 @@ private fun AppToggleItem(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            app.icon?.let { icon ->
+                Image(
+                    painter = rememberDrawablePainter(drawable = icon),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                )
+            }
             Text(
                 text = app.displayName,
                 style = MaterialTheme.typography.bodyMedium,

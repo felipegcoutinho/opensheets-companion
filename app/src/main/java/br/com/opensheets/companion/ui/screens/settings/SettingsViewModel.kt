@@ -27,7 +27,8 @@ import javax.inject.Inject
 data class MonitoredAppUi(
     val packageName: String,
     val displayName: String,
-    val isEnabled: Boolean
+    val isEnabled: Boolean,
+    val icon: Drawable? = null
 )
 
 data class InstalledAppUi(
@@ -46,6 +47,9 @@ data class SettingsUiState(
     val showDisconnectDialog: Boolean = false,
     val showClearDataDialog: Boolean = false,
     val showAddAppDialog: Boolean = false,
+    val showEditServerDialog: Boolean = false,
+    val editServerUrl: String = "",
+    val editToken: String = "",
     val installedApps: List<InstalledAppUi> = emptyList(),
     val appSearchQuery: String = "",
     val isLoadingApps: Boolean = false
@@ -90,11 +94,18 @@ class SettingsViewModel @Inject constructor(
 
     private suspend fun loadMonitoredApps() {
         val apps = appConfigDao.getAll()
+        val pm = context.packageManager
         val uiApps = apps.map { app ->
+            val icon = try {
+                pm.getApplicationIcon(app.packageName)
+            } catch (e: Exception) {
+                null
+            }
             MonitoredAppUi(
                 packageName = app.packageName,
                 displayName = app.displayName,
-                isEnabled = app.isEnabled
+                isEnabled = app.isEnabled,
+                icon = icon
             )
         }
         _uiState.value = _uiState.value.copy(monitoredApps = uiApps)
@@ -227,6 +238,52 @@ class SettingsViewModel @Inject constructor(
                 tokenName = "",
                 isConnected = false,
                 showDisconnectDialog = false
+            )
+        }
+    }
+
+    fun showEditServerDialog() {
+        _uiState.value = _uiState.value.copy(
+            showEditServerDialog = true,
+            editServerUrl = _uiState.value.serverUrl,
+            editToken = secureStorage.accessToken ?: ""
+        )
+    }
+
+    fun hideEditServerDialog() {
+        _uiState.value = _uiState.value.copy(
+            showEditServerDialog = false,
+            editServerUrl = "",
+            editToken = ""
+        )
+    }
+
+    fun updateEditServerUrl(url: String) {
+        _uiState.value = _uiState.value.copy(editServerUrl = url)
+    }
+
+    fun updateEditToken(token: String) {
+        _uiState.value = _uiState.value.copy(editToken = token)
+    }
+
+    fun saveServerSettings() {
+        viewModelScope.launch {
+            val url = _uiState.value.editServerUrl.trim()
+            val token = _uiState.value.editToken.trim()
+
+            if (url.isNotEmpty()) {
+                secureStorage.serverUrl = url
+            }
+            if (token.isNotEmpty()) {
+                secureStorage.accessToken = token
+            }
+
+            _uiState.value = _uiState.value.copy(
+                serverUrl = url,
+                isConnected = url.isNotEmpty() && token.isNotEmpty(),
+                showEditServerDialog = false,
+                editServerUrl = "",
+                editToken = ""
             )
         }
     }
