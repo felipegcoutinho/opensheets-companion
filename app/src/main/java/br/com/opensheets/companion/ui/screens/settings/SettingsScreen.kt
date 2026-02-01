@@ -317,7 +317,12 @@ fun SettingsScreen(
             }
 
             item {
-                Card(modifier = Modifier.fillMaxWidth()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
+                ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -415,6 +420,9 @@ private fun AddAppDialog(
                             items(installedApps) { app ->
                                 Card(
                                     modifier = Modifier.fillMaxWidth(),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                    ),
                                     onClick = { onAppSelected(app) }
                                 ) {
                                     Row(
@@ -475,7 +483,12 @@ private fun ServerCard(
     onEdit: () -> Unit,
     onDisconnect: () -> Unit
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
@@ -614,7 +627,12 @@ private fun AppToggleItem(
     onToggle: (Boolean) -> Unit,
     onRemove: () -> Unit
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()

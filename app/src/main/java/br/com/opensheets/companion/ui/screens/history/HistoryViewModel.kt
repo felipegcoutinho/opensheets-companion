@@ -1,23 +1,31 @@
 package br.com.opensheets.companion.ui.screens.history
 
+import android.content.Context
+import android.graphics.drawable.Drawable
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.com.opensheets.companion.data.local.dao.NotificationDao
 import br.com.opensheets.companion.data.local.entities.NotificationEntity
 import br.com.opensheets.companion.data.local.entities.SyncStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
 
+@Immutable
 data class NotificationUiItem(
     val id: String,
     val appName: String,
+    val appIcon: Drawable?,
     val title: String?,
     val text: String,
     val parsedAmount: String?,
@@ -40,6 +48,7 @@ enum class SyncStatusFilter {
 
 @HiltViewModel
 class HistoryViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val notificationDao: NotificationDao
 ) : ViewModel() {
 
@@ -48,6 +57,9 @@ class HistoryViewModel @Inject constructor(
 
     private val dateFormat = SimpleDateFormat("dd/MM HH:mm", Locale.getDefault())
     private val dateFormatFull = SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault())
+
+    // Cache for app icons to avoid loading during scroll
+    private val iconCache = mutableMapOf<String, Drawable?>()
 
     init {
         loadNotifications()
@@ -59,7 +71,21 @@ class HistoryViewModel @Inject constructor(
 
             val notifications = notificationDao.getRecent(100)
             val filteredNotifications = filterNotifications(notifications, _uiState.value.selectedFilter)
-            val uiItems = filteredNotifications.map { it.toUiItem() }
+
+            // Pre-load all icons on IO thread
+            val uiItems = withContext(Dispatchers.IO) {
+                val pm = context.packageManager
+                filteredNotifications.map { entity ->
+                    val icon = iconCache.getOrPut(entity.sourceApp) {
+                        try {
+                            pm.getApplicationIcon(entity.sourceApp)
+                        } catch (e: Exception) {
+                            null
+                        }
+                    }
+                    entity.toUiItem(icon)
+                }
+            }
 
             _uiState.value = _uiState.value.copy(
                 isLoading = false,
@@ -99,10 +125,11 @@ class HistoryViewModel @Inject constructor(
         }
     }
 
-    private fun NotificationEntity.toUiItem(): NotificationUiItem {
+    private fun NotificationEntity.toUiItem(icon: Drawable?): NotificationUiItem {
         return NotificationUiItem(
             id = id,
             appName = sourceAppName ?: sourceApp,
+            appIcon = icon,
             title = originalTitle,
             text = originalText,
             parsedAmount = parsedAmount?.let { "R$ %.2f".format(it) },

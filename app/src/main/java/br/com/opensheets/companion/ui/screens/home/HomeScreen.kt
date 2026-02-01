@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
@@ -44,15 +46,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.res.stringResource
-import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import br.com.opensheets.companion.R
 import br.com.opensheets.companion.data.local.entities.SyncStatus
+import com.google.accompanist.drawablepainter.rememberDrawablePainter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -95,7 +96,10 @@ fun HomeScreen(
             )
         }
     ) { paddingValues ->
+        val listState = rememberLazyListState()
+
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
@@ -103,7 +107,7 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Status Card
-            item {
+            item(key = "status") {
                 StatusCard(
                     pendingCount = uiState.pendingCount,
                     syncedToday = uiState.syncedToday,
@@ -112,7 +116,7 @@ fun HomeScreen(
             }
 
             // Permission Status Card
-            item {
+            item(key = "permission") {
                 PermissionCard(
                     hasPermission = uiState.hasNotificationPermission,
                     onRequestPermission = viewModel::requestNotificationPermission
@@ -120,7 +124,7 @@ fun HomeScreen(
             }
 
             // Monitored Apps Summary
-            item {
+            item(key = "monitored_apps") {
                 MonitoredAppsCard(
                     enabledAppsCount = uiState.enabledAppsCount,
                     monitoredApps = uiState.monitoredApps
@@ -128,7 +132,7 @@ fun HomeScreen(
             }
 
             // Filter tabs with title
-            item {
+            item(key = "filter") {
                 Spacer(modifier = Modifier.height(8.dp))
                 FilterSection(
                     selectedFilter = uiState.selectedFilter,
@@ -139,7 +143,7 @@ fun HomeScreen(
             // Notifications list
             when {
                 uiState.isLoadingNotifications -> {
-                    item {
+                    item(key = "loading") {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -151,7 +155,7 @@ fun HomeScreen(
                     }
                 }
                 uiState.notifications.isEmpty() -> {
-                    item {
+                    item(key = "empty") {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -266,11 +270,25 @@ private fun NotificationCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = notification.appName,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    notification.appIcon?.let { icon ->
+                        Image(
+                            painter = rememberDrawablePainter(drawable = icon),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(16.dp)
+                                .clip(RoundedCornerShape(3.dp))
+                        )
+                    }
+                    Text(
+                        text = notification.appName,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -514,7 +532,10 @@ private fun MonitoredAppsCard(
     monitoredApps: List<MonitoredAppIcon>
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
     ) {
         Row(
             modifier = Modifier
