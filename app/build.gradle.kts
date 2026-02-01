@@ -10,6 +10,15 @@ android {
     namespace = "br.com.opensheets.companion"
     compileSdk = 35
 
+    signingConfigs {
+        create("release") {
+            storeFile = file(project.findProperty("android.injected.signing.store.file") ?: "keystore.jks")
+            storePassword = project.findProperty("android.injected.signing.store.password") as String?
+            keyAlias = project.findProperty("android.injected.signing.key.alias") as String?
+            keyPassword = project.findProperty("android.injected.signing.key.password") as String?
+        }
+    }
+
     defaultConfig {
         applicationId = "br.com.opensheets.companion"
         minSdk = 31 // Android 12
@@ -22,6 +31,7 @@ android {
 
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
